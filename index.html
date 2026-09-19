@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知識即戰力 - 社會科對戰</title>
+<style>
+  :root {
+    --bg-dark: #1a1625;
+    --bg-panel: #262038;
+    --bg-panel-light: #33294d;
+    --accent-gold: #e8b64a;
+    --accent-blue: #4a9de8;
+    --accent-red: #e85a5a;
+    --accent-green: #5ae87a;
+    --text-light: #f0e9ff;
+    --text-dim: #a89bc9;
+    --border-glow: #7a5fc9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: radial-gradient(ellipse at top, #2a2244 0%, var(--bg-dark) 70%);
+    color: var(--text-light);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .app {
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border-glow);
+    box-shadow: 0 0 40px rgba(122, 95, 201, 0.3);
+    overflow: hidden;
+    min-height: 640px;
+    display: flex;
+    flex-direction: column;
+  }
+  .screen { display: none; padding: 28px 24px; flex: 1; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  h1 { font-size: 22px; text-align: center; margin: 0 0 4px; color: var(--accent-gold); }
+  h2 { font-size: 18px; margin: 0 0 16px; color: var(--accent-gold); }
+  .subtitle { text-align: center; color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+
+  label { font-size: 13px; color: var(--text-dim); margin-bottom: 4px; display: block; }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-glow);
+    background: var(--bg-dark);
+    color: var(--text-light);
+    font-size: 14px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-gold), #c9902f);
+    color: #2a2015;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  button:active { transform: scale(0.98); }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border-glow);
+    color: var(--text-light);
+  }
+  button.small { width: auto; padding: 8px 14px; font-size: 13px; }
+
+  .link-row { text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-dim); }
+  .link-row a { color: var(--accent-blue); cursor: pointer; text-decoration: underline; }
+
+  .error-msg { color: var(--accent-red); font-size: 13px; margin: -8px 0 12px; min-height: 16px; }
+
+  /* Character creation */
+  .avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .avatar-choice {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 2px solid var(--border-glow);
+    background: var(--bg-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+  }
+  .avatar-choice.selected {
+    border-color: var(--accent-gold);
+    background: rgba(232, 182, 74, 0.15);
+    box-shadow: 0 0 12px rgba(232, 182, 74, 0.4);
+  }
+  .totem-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .totem-choice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid var(--border-glow);
+    background: var(--bg-dark);
+    cursor: pointer;
+  }
+  .totem-choice.selected {
+    border-color: var(--accent-gold);
+    background: rgba(232, 182, 74, 0.12);
+  }
+  .totem-icon { font-size: 24px; }
+  .totem-info b { display: block; font-size: 14px; }
+  .totem-info span { font-size: 12px; color: var(--text-dim); }
+
+  /* Main menu */
+  .char-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg-panel-light);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .char-avatar-big {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--bg-dark);
+    border: 2px solid var(--accent-gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    flex-shrink: 0;
+  }
+  .char-meta b { font-size: 16px; }
+  .char-meta div { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .level-bar-bg { background: var(--bg-dark); border-radius: 6px; height: 8px; overflow: hidden; margin-top: 6px; }
+  .level-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); }
+
+  .announcement {
+    background: rgba(74, 157, 232, 0.12);
+    border: 1px solid var(--accent-blue);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .announcement.show { display: block; }
+  .announcement b { color: var(--accent-blue); }
+
+  .subject-list { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .subject-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-panel-light);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-glow);
+  }
+  .subject-card.locked { opacity: 0.5; }
+  .subject-header {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .subject-header .caret { transition: transform 0.15s; color: var(--text-dim); }
+  .subject-header.expanded .caret { transform: rotate(90deg); }
+  .lesson-list { margin-top: 10px; display: none; flex-direction: column; gap: 6px; }
+  .lesson-list.expanded { display: flex; }
+  .lesson-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-dark); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+    cursor: pointer;
+  }
+  .lesson-row.lesson-locked { opacity: 0.4; cursor: not-allowed; }
+  .lesson-row .lesson-status { font-size: 11px; color: var(--text-dim); }
+  .no-lessons-open { font-size: 12px; color: var(--text-dim); padding: 4px 2px; }
+  .subject-name { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  .subject-icon { font-size: 22px; }
+  .subject-progress { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+  .pvp-btn {
+    margin-top: auto;
+    background: linear-gradient(135deg, var(--accent-red), #a53838);
+    color: white;
+  }
+
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .top-bar .logout { font-size: 12px; color: var(--text-dim); cursor: pointer; text-decoration: underline; }
+  .loading { text-align: center; color: var(--text-dim); padding: 40px 0; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== LOADING ===== -->
+  <div class="screen active" id="screen-loading">
+    <div class="loading">載入中...</div>
+  </div>
+
+  <!-- ===== LOGIN ===== -->
+  <div class="screen" id="screen-login">
+    <h1>⚔️ 知識即戰力</h1>
+    <div class="subtitle">國一社會科對戰遊戲</div>
+    <label>帳號</label>
+    <input type="text" id="login-username" placeholder="你的遊戲帳號">
+    <label>密碼</label>
+    <input type="password" id="login-password" placeholder="密碼">
+    <div class="error-msg" id="login-error"></div>
+    <button onclick="handleLogin()">登入</button>
+    <div class="link-row">還沒有帳號？<a onclick="showScreen('register')">立即註冊</a></div>
+  </div>
+
+  <!-- ===== REGISTER ===== -->
+  <div class="screen" id="screen-register">
+    <h1>建立帳號</h1>
+    <div class="subtitle">用學校信箱或老師指定的帳號格式註冊</div>
+    <label>暱稱（遊戲中顯示名稱）</label>
+    <input type="text" id="reg-name" placeholder="例如 小明" maxlength="12">
+    <label>帳號（英文/數字/底線，3-20 字，之後登入要用）</label>
+    <input type="text" id="reg-username" placeholder="自己取一個帳號" maxlength="20">
+    <label>密碼（至少 6 碼）</label>
+    <input type="password" id="reg-password" placeholder="密碼">
+    <div class="error-msg" id="register-error"></div>
+    <button onclick="handleRegister()">建立帳號</button>
+    <div class="link-row">已經有帳號？<a onclick="showScreen('login')">返回登入</a></div>
+  </div>
+
+  <!-- ===== CHARACTER CREATION ===== -->
+  <div class="screen" id="screen-create-character">
+    <h2>🎭 創建你的角色</h2>
+    <label>角色名稱</label>
+    <input type="text" id="char-name" placeholder="幫你的角色取個名字" maxlength="10">
+
+    <label>選擇外觀</label>
+    <div class="avatar-grid" id="avatar-grid"></div>
+
+    <label>選擇你的文化圖騰（未來會影響戰鬥屬性）</label>
+    <div class="totem-grid" id="totem-grid"></div>
+
+    <div class="error-msg" id="create-char-error"></div>
+    <button onclick="handleCreateCharacter()">開始冒險</button>
+  </div>
+
+  <!-- ===== MAIN MENU ===== -->
+  <div class="screen" id="screen-menu">
+    <div class="top-bar">
+      <h1 style="margin:0; font-size:18px;">知識即戰力</h1>
+      <span class="logout" onclick="handleLogout()">登出</span>
+    </div>
+
+    <div class="char-card">
+      <div class="char-avatar-big" id="menu-avatar"></div>
+      <div class="char-meta" style="flex:1;">
+        <b id="menu-char-name"></b>
+        <div id="menu-totem-name"></div>
+        <div>Lv. <span id="menu-level">1</span></div>
+        <div class="level-bar-bg"><div class="level-bar-fill" id="menu-exp-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="announcement" id="announcement-box">
+      <b>📢 老師公告：</b> <span id="announcement-text"></span>
+    </div>
+
+    <div class="subject-list" id="subject-list"></div>
+
+    <button class="pvp-btn" onclick="alert('PvP 對戰功能即將開放，等老師上傳完題庫後解鎖！')">⚔️ 發起對戰</button>
+  </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ⚠️ 把這裡換成你 campus_game.html 裡 room-d3534 專案的 firebaseConfig
+  const firebaseConfig = {
+    apiKey: "AIzaSyCS1_9wCp2B_ehQkfJXbf3PpplJBZ8bJMg",
+    authDomain: "room-d3534.firebaseapp.com",
+    projectId: "room-d3534",
+    storageBucket: "room-d3534.firebasestorage.app",
+    messagingSenderId: "547122613459",
+    appId: "1:547122613459:web:b3826c163374f64aa7d826"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // ===== 三科課程單元清單（開關由老師後台的 settings/unitLocks 控制）=====
+  const SUBJECT_META = {
+    geography: { name: "地理", icon: "🗺️" },
+    history:   { name: "歷史", icon: "📜" },
+    civics:    { name: "公民", icon: "⚖️" }
+  };
+  const LESSONS = {
+    geography: [
+      "位置、地圖與座標系統", "位置對臺灣的影響", "臺灣的地形",
+      "臺灣的海域", "臺灣的氣候", "臺灣的水文"
+    ],
+    history: [
+      "史前文化與原住民族", "大航海時代各方勢力在臺灣", "大航海時代臺灣原住民與外來者",
+      "清帝國時期的行政治理", "清帝國時期的農商發展", "清帝國時期的社會與文化"
+    ],
+    civics: [
+      "人性尊嚴與人權保障", "性別平等", "我們都是一家人",
+      "平權家庭", "校園生活中的公共參與", "社區與部落"
+    ]
+  };
+  let unitLocks = {}; // 從 Firestore 讀回來的開放狀態，格式 { geography: [true,false,...], ... }
+
+  async function loadUnitLocks() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "unitLocks"));
+      unitLocks = snap.exists() ? snap.data() : {};
+    } catch (e) {
+      unitLocks = {};
+    }
+  }
+
+  function isLessonOpen(subject, lessonIndex) {
+    const arr = unitLocks[subject];
+    return Array.isArray(arr) ? !!arr[lessonIndex] : false;
+  }
+
+  function renderSubjectList() {
+    const container = document.getElementById("subject-list");
+    container.innerHTML = "";
+
+    Object.keys(SUBJECT_META).forEach(subject => {
+      const meta = SUBJECT_META[subject];
+      const lessons = LESSONS[subject];
+      const openCount = lessons.filter((_, i) => isLessonOpen(subject, i)).length;
+
+      const card = document.createElement("div");
+      card.className = "subject-card";
+      card.innerHTML = `
+        <div class="subject-header" data-subject="${subject}">
+          <div class="subject-name"><span class="subject-icon">${meta.icon}</span>${meta.name}</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="subject-progress">${openCount > 0 ? `已開放 ${openCount}/${lessons.length} 課` : "尚未開放"}</div>
+            <span class="caret">▸</span>
+          </div>
+        </div>
+        <div class="lesson-list" id="lesson-list-${subject}"></div>
+      `;
+      container.appendChild(card);
+
+      const lessonListEl = card.querySelector(`#lesson-list-${subject}`);
+      if (openCount === 0) {
+        lessonListEl.innerHTML = `<div class="no-lessons-open">老師尚未開放這一科的任何單元，等老師開放後再回來挑戰！</div>`;
+      } else {
+        lessons.forEach((title, i) => {
+          const open = isLessonOpen(subject, i);
+          const row = document.createElement("div");
+          row.className = "lesson-row" + (open ? "" : " lesson-locked");
+          row.innerHTML = `
+            <span>第${i + 1}課　${title}</span>
+            <span class="lesson-status">${open ? "✅ 已開放" : "🔒 未開放"}</span>
+          `;
+          if (open) {
+            row.onclick = () => alert(`「${title}」的題庫與對戰內容即將接入，敬請期待！`);
+          }
+          lessonListEl.appendChild(row);
+        });
+      }
+
+      card.querySelector(".subject-header").onclick = () => {
+        const header = card.querySelector(".subject-header");
+        header.classList.toggle("expanded");
+        lessonListEl.classList.toggle("expanded");
+      };
+    });
+  }
+
+  // ===== 角色外觀 / 圖騰資料（先放預設，之後可依三科內容擴充）=====
+  const AVATARS = ["🧑‍🎓","🧑‍🚀","🥷","🧙","🦸","🧝","👨‍🌾","👩‍🔬"];
+  const TOTEMS = [
+    { id: "shixingjian", icon: "🏺", name: "十三行圖騰", desc: "歷史屬性・煉鐵工藝" },
+    { id: "beinan",      icon: "🪨", name: "卑南圖騰",   desc: "歷史屬性・石板守護" },
+    { id: "changbin",    icon: "🔥", name: "長濱圖騰",   desc: "歷史屬性・原始生存" },
+    { id: "mountain",    icon: "⛰️", name: "山地圖騰",   desc: "地理屬性・山地強化" },
+    { id: "coastal",     icon: "🌊", name: "沿海圖騰",   desc: "地理屬性・速度強化" },
+  ];
+
+  let selectedAvatar = null;
+  let selectedTotem = null;
+  let currentUser = null;
+  let currentUserData = null;
+
+  window.showScreen = function(name) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById("screen-" + name).classList.add("active");
+  };
+
+  // ===== 帳號系統：不蒐集真實 email，學生自訂帳號 =====
+  // Firebase Auth 內部仍需要 email 格式，所以用「帳號＋固定網域」組出一個內部用的假 email，
+  // 這個假 email 不會顯示給學生，也不代表任何真實信箱。
+  const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+  function usernameToPseudoEmail(username) {
+    return username.toLowerCase() + "@ssgame.local";
+  }
+
+  // ===== 註冊 =====
+  window.handleRegister = async function() {
+    const name = document.getElementById("reg-name").value.trim();
+    const username = document.getElementById("reg-username").value.trim();
+    const password = document.getElementById("reg-password").value;
+    const errEl = document.getElementById("register-error");
+    errEl.textContent = "";
+
+    if (!name || !username || !password) {
+      errEl.textContent = "請填寫所有欄位";
+      return;
+    }
+    if (!USERNAME_REGEX.test(username)) {
+      errEl.textContent = "帳號只能是英文、數字、底線，長度 3-20 字";
+      return;
+    }
+    if (password.length < 6) {
+      errEl.textContent = "密碼至少需要 6 碼";
+      return;
+    }
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, usernameToPseudoEmail(username), password);
+      await setDoc(doc(db, "users", cred.user.uid), {
+        displayName: name,
+        username: username,
+        role: "student",        // 老師帳號之後由你手動在 Firestore 後台把這欄改成 "teacher"
+        character: null,        // 尚未創角
+        level: 1,
+        exp: 0,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        progress: {
+          geography: { completed: 0, total: 0, correctRate: 0 },
+          history:   { completed: 0, total: 0, correctRate: 0 },
+          civics:    { completed: 0, total: 0, correctRate: 0 }
+        }
+      });
+      // onAuthStateChanged 會自動接手導向創角畫面
+    } catch (e) {
+      errEl.textContent = translateFirebaseError(e.code);
+    }
+  };
+
+  // ===== 登入 =====
+  window.handleLogin = async function() {
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errEl = document.getElementById("login-error");
+    errEl.textContent = "";
+
+    if (!username || !password) {
+      errEl.textContent = "請輸入帳號和密碼";
+      return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, usernameToPseudoEmail(username), password);
+      // onAuthStateChanged 會自動接手
+    } catch (e) {
+      errEl.textContent = translateFirebaseError(e.code);
+    }
+  };
+
+  window.handleLogout = async function() {
+    await signOut(auth);
+    showScreen("login");
+  };
+
+  function translateFirebaseError(code) {
+    const map = {
+      "auth/email-already-in-use": "這個帳號已經被使用了，換一個試試",
+      "auth/weak-password": "密碼太簡單，至少需要 6 碼",
+      "auth/user-not-found": "帳號不存在",
+      "auth/wrong-password": "密碼錯誤",
+      "auth/invalid-credential": "帳號或密碼錯誤",
+      "auth/too-many-requests": "嘗試次數過多，請稍後再試",
+    };
+    return map[code] || "發生錯誤，請再試一次";
+  }
+
+  // ===== 角色創建畫面初始化 =====
+  function renderAvatarGrid() {
+    const grid = document.getElementById("avatar-grid");
+    grid.innerHTML = "";
+    AVATARS.forEach(av => {
+      const div = document.createElement("div");
+      div.className = "avatar-choice";
+      div.textContent = av;
+      div.onclick = () => {
+        selectedAvatar = av;
+        document.querySelectorAll(".avatar-choice").forEach(c => c.classList.remove("selected"));
+        div.classList.add("selected");
+      };
+      grid.appendChild(div);
+    });
+  }
+
+  function renderTotemGrid() {
+    const grid = document.getElementById("totem-grid");
+    grid.innerHTML = "";
+    TOTEMS.forEach(t => {
+      const div = document.createElement("div");
+      div.className = "totem-choice";
+      div.innerHTML = `<span class="totem-icon">${t.icon}</span>
+        <div class="totem-info"><b>${t.name}</b><span>${t.desc}</span></div>`;
+      div.onclick = () => {
+        selectedTotem = t.id;
+        document.querySelectorAll(".totem-choice").forEach(c => c.classList.remove("selected"));
+        div.classList.add("selected");
+      };
+      grid.appendChild(div);
+    });
+  }
+
+  window.handleCreateCharacter = async function() {
+    const name = document.getElementById("char-name").value.trim();
+    const errEl = document.getElementById("create-char-error");
+    errEl.textContent = "";
+
+    if (!name) { errEl.textContent = "請幫角色取個名字"; return; }
+    if (!selectedAvatar) { errEl.textContent = "請選擇一個外觀"; return; }
+    if (!selectedTotem) { errEl.textContent = "請選擇一個圖騰"; return; }
+
+    const totemObj = TOTEMS.find(t => t.id === selectedTotem);
+
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      character: {
+        name: name,
+        avatar: selectedAvatar,
+        totemId: selectedTotem,
+        totemName: totemObj.name,
+        totemIcon: totemObj.icon
+      }
+    });
+
+    currentUserData.character = {
+      name, avatar: selectedAvatar, totemId: selectedTotem,
+      totemName: totemObj.name, totemIcon: totemObj.icon
+    };
+    renderMainMenu();
+    showScreen("menu");
+  };
+
+  // ===== 主選單渲染 =====
+  async function renderMainMenu() {
+    const c = currentUserData.character;
+    document.getElementById("menu-avatar").textContent = c.avatar;
+    document.getElementById("menu-char-name").textContent = c.name;
+    document.getElementById("menu-totem-name").textContent = c.totemIcon + " " + c.totemName;
+    document.getElementById("menu-level").textContent = currentUserData.level || 1;
+
+    const exp = currentUserData.exp || 0;
+    const expForNextLevel = 100; // 之後可依實際升級曲線調整
+    document.getElementById("menu-exp-bar").style.width = Math.min(100, (exp / expForNextLevel) * 100) + "%";
+
+    // 各科單元開放狀態（由老師後台控制），並渲染可展開的單元清單
+    await loadUnitLocks();
+    renderSubjectList();
+
+    // 公告
+    try {
+      const annoSnap = await getDoc(doc(db, "announcements", "current"));
+      if (annoSnap.exists() && annoSnap.data().text) {
+        document.getElementById("announcement-text").textContent = annoSnap.data().text;
+        document.getElementById("announcement-box").classList.add("show");
+      }
+    } catch (e) { /* 沒有公告就略過 */ }
+  }
+
+  // ===== 登入狀態監聽（自動導向對的畫面）=====
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (!snap.exists()) {
+        showScreen("login");
+        return;
+      }
+      currentUserData = snap.data();
+
+      // 更新最後登入時間
+      updateDoc(doc(db, "users", user.uid), { lastLogin: serverTimestamp() });
+
+      if (!currentUserData.character) {
+        renderAvatarGrid();
+        renderTotemGrid();
+        showScreen("create-character");
+      } else {
+        renderMainMenu();
+        showScreen("menu");
+      }
+    } else {
+      currentUser = null;
+      currentUserData = null;
+      showScreen("login");
+    }
+  });
+</script>
+</body>
+</html>

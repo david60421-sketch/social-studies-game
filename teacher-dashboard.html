@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老師後台 - 知識即戰力</title>
+<style>
+  :root {
+    --bg-dark: #1a1625; --bg-panel: #262038; --bg-panel-light: #33294d;
+    --accent-gold: #e8b64a; --accent-blue: #4a9de8; --accent-red: #e85a5a;
+    --accent-green: #5ae87a; --text-light: #f0e9ff; --text-dim: #a89bc9;
+    --border-glow: #7a5fc9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: var(--bg-dark); color: var(--text-light); padding: 20px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { color: var(--accent-gold); font-size: 22px; }
+  .panel {
+    background: var(--bg-panel); border: 1px solid var(--border-glow);
+    border-radius: 12px; padding: 18px; margin-bottom: 20px;
+  }
+  .panel h2 { margin-top: 0; font-size: 16px; color: var(--accent-gold); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bg-panel-light); }
+  th { color: var(--text-dim); font-weight: normal; }
+  .online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .online { background: var(--accent-green); }
+  .offline { background: var(--text-dim); }
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .stat-card {
+    flex: 1; min-width: 140px; background: var(--bg-panel-light);
+    border-radius: 10px; padding: 12px; text-align: center;
+  }
+  .stat-card .num { font-size: 22px; color: var(--accent-gold); font-weight: bold; }
+  .stat-card .label { font-size: 12px; color: var(--text-dim); }
+  textarea {
+    width: 100%; min-height: 70px; border-radius: 8px; border: 1px solid var(--border-glow);
+    background: var(--bg-dark); color: var(--text-light); padding: 10px; font-size: 14px;
+    font-family: inherit; resize: vertical;
+  }
+  button {
+    padding: 10px 18px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg, var(--accent-gold), #c9902f);
+    color: #2a2015; font-weight: bold; cursor: pointer; margin-top: 8px;
+  }
+  input[type=password], input[type=email] {
+    width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px;
+    border: 1px solid var(--border-glow); background: var(--bg-dark); color: var(--text-light);
+  }
+  .login-box { max-width: 320px; margin: 100px auto; }
+  .error-msg { color: var(--accent-red); font-size: 13px; margin-bottom: 10px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--bg-dark); color: var(--text-dim); }
+
+  .unit-columns { display: flex; gap: 16px; flex-wrap: wrap; }
+  .unit-column { flex: 1; min-width: 220px; }
+  .unit-column h3 { font-size: 14px; margin: 0 0 8px; color: var(--accent-gold); }
+  .unit-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-dark); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px;
+  }
+  .toggle-switch {
+    position: relative; width: 40px; height: 22px; flex-shrink: 0; cursor: pointer;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--bg-panel-light);
+    border-radius: 22px; transition: 0.2s;
+  }
+  .toggle-slider::before {
+    content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+    background: var(--text-dim); border-radius: 50%; transition: 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent-green); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); background: #143; }
+</style>
+</head>
+<body>
+
+<!-- 老師登入（用同一個 Firebase Auth，但限定老師帳號） -->
+<div class="login-box panel" id="teacher-login">
+  <h2>老師後台登入</h2>
+  <input type="text" id="teacher-username" placeholder="你的遊戲帳號">
+  <input type="password" id="teacher-password" placeholder="密碼">
+  <div class="error-msg" id="teacher-login-error"></div>
+  <button onclick="handleTeacherLogin()" style="width:100%;">登入</button>
+</div>
+
+<div class="wrap" id="dashboard" style="display:none;">
+  <h1>📊 知識即戰力・老師後台</h1>
+
+  <div class="panel">
+    <h2>整體概況</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="num" id="stat-total">-</div><div class="label">總人數</div></div>
+      <div class="stat-card"><div class="num" id="stat-online">-</div><div class="label">今日已登入</div></div>
+      <div class="stat-card"><div class="num" id="stat-top-level">-</div><div class="label">目前最高等級</div></div>
+      <div class="stat-card"><div class="num" id="stat-top-name">-</div><div class="label">最高等級玩家</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>📢 發佈公告</h2>
+    <textarea id="announcement-input" placeholder="輸入要顯示在學生主選單的公告內容..."></textarea>
+    <button onclick="postAnnouncement()">發佈公告</button>
+    <div style="font-size:12px; color:var(--text-dim); margin-top:6px;" id="anno-status"></div>
+  </div>
+
+  <div class="panel">
+    <h2>📖 單元開放控制</h2>
+    <div style="font-size:12px; color:var(--text-dim); margin-bottom:10px;">
+      配合上課進度開關每一課，學生只會看到已開放的單元。
+    </div>
+    <div class="unit-columns" id="unit-columns"></div>
+  </div>
+
+  <div class="panel">
+    <h2>學生列表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>狀態</th>
+          <th>暱稱</th>
+          <th>角色</th>
+          <th>Lv</th>
+          <th>地理</th>
+          <th>歷史</th>
+          <th>公民</th>
+          <th>最後登入</th>
+        </tr>
+      </thead>
+      <tbody id="student-table-body">
+        <tr><td colspan="8" style="text-align:center; color:var(--text-dim);">載入中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, getDocs, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ⚠️ 跟學生端用同一個 firebaseConfig（room-d3534）
+  const firebaseConfig = {
+    apiKey: "AIzaSyCS1_9wCp2B_ehQkfJXbf3PpplJBZ8bJMg",
+    authDomain: "room-d3534.firebaseapp.com",
+    projectId: "room-d3534",
+    storageBucket: "room-d3534.firebasestorage.app",
+    messagingSenderId: "547122613459",
+    appId: "1:547122613459:web:b3826c163374f64aa7d826"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // 跟學生端一樣，帳號用假 email 包裝，不蒐集真實 email
+  function usernameToPseudoEmail(username) {
+    return username.toLowerCase() + "@ssgame.local";
+  }
+
+  // ===== 單元開放控制（與學生端 social-studies-game.html 的 LESSONS 保持一致）=====
+  const SUBJECT_META = {
+    geography: { name: "地理" },
+    history:   { name: "歷史" },
+    civics:    { name: "公民" }
+  };
+  const LESSONS = {
+    geography: [
+      "位置、地圖與座標系統", "位置對臺灣的影響", "臺灣的地形",
+      "臺灣的海域", "臺灣的氣候", "臺灣的水文"
+    ],
+    history: [
+      "史前文化與原住民族", "大航海時代各方勢力在臺灣", "大航海時代臺灣原住民與外來者",
+      "清帝國時期的行政治理", "清帝國時期的農商發展", "清帝國時期的社會與文化"
+    ],
+    civics: [
+      "人性尊嚴與人權保障", "性別平等", "我們都是一家人",
+      "平權家庭", "校園生活中的公共參與", "社區與部落"
+    ]
+  };
+  let unitLocks = {};
+
+  async function loadUnitControlPanel() {
+    const snap = await getDoc(doc(db, "settings", "unitLocks"));
+    unitLocks = snap.exists() ? snap.data() : {};
+
+    const container = document.getElementById("unit-columns");
+    container.innerHTML = "";
+
+    Object.keys(SUBJECT_META).forEach(subject => {
+      const arr = unitLocks[subject] || [];
+      const col = document.createElement("div");
+      col.className = "unit-column";
+      col.innerHTML = `<h3>${SUBJECT_META[subject].name}</h3>`;
+
+      LESSONS[subject].forEach((title, i) => {
+        const isOpen = !!arr[i];
+        const row = document.createElement("div");
+        row.className = "unit-row";
+        row.innerHTML = `
+          <span>第${i + 1}課　${title}</span>
+          <label class="toggle-switch">
+            <input type="checkbox" ${isOpen ? "checked" : ""} data-subject="${subject}" data-index="${i}">
+            <span class="toggle-slider"></span>
+          </label>
+        `;
+        col.appendChild(row);
+      });
+      container.appendChild(col);
+    });
+
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener("change", async (e) => {
+        const subject = e.target.dataset.subject;
+        const index = parseInt(e.target.dataset.index, 10);
+        const arr = unitLocks[subject] ? [...unitLocks[subject]] : [];
+        arr[index] = e.target.checked;
+        unitLocks[subject] = arr;
+        await setDoc(doc(db, "settings", "unitLocks"), unitLocks, { merge: true });
+      });
+    });
+  }
+
+  window.handleTeacherLogin = async function() {
+    const username = document.getElementById("teacher-username").value.trim();
+    const password = document.getElementById("teacher-password").value;
+    const errEl = document.getElementById("teacher-login-error");
+    errEl.textContent = "";
+    try {
+      await signInWithEmailAndPassword(auth, usernameToPseudoEmail(username), password);
+    } catch (e) {
+      errEl.textContent = "帳號或密碼錯誤";
+    }
+  };
+
+  // 權限判斷：讀取 Firestore 使用者文件的 role 欄位是否為 "teacher"
+  // 老師帳號的建立方式：先在學生端 app 用同一套流程註冊一個帳號，
+  // 再自己到 Firebase 主控台 → Firestore → users/{該帳號的 uid} 把 role 欄位手動改成 "teacher"
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const role = snap.exists() ? snap.data().role : null;
+
+    if (role === "teacher") {
+      document.getElementById("teacher-login").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+      loadDashboard();
+      loadUnitControlPanel();
+    } else {
+      document.getElementById("teacher-login-error").textContent = "這個帳號沒有後台權限";
+      await signOut(auth);
+    }
+  });
+
+  async function loadDashboard() {
+    const snap = await getDocs(collection(db, "users"));
+    const students = [];
+    snap.forEach(d => students.push({ id: d.id, ...d.data() }));
+
+    // 統計
+    const today = new Date(); today.setHours(0,0,0,0);
+    const onlineToday = students.filter(s => s.lastLogin && s.lastLogin.toDate() >= today).length;
+    const topStudent = students.reduce((max, s) => (s.level || 1) > (max?.level || 0) ? s : max, null);
+
+    document.getElementById("stat-total").textContent = students.length;
+    document.getElementById("stat-online").textContent = onlineToday;
+    document.getElementById("stat-top-level").textContent = topStudent ? (topStudent.level || 1) : "-";
+    document.getElementById("stat-top-name").textContent = topStudent?.character?.name || topStudent?.displayName || "-";
+
+    // 表格
+    const tbody = document.getElementById("student-table-body");
+    tbody.innerHTML = "";
+    students
+      .sort((a, b) => (b.level || 1) - (a.level || 1))
+      .forEach(s => {
+        const isOnlineToday = s.lastLogin && s.lastLogin.toDate() >= today;
+        const lastLoginStr = s.lastLogin ? s.lastLogin.toDate().toLocaleString("zh-TW") : "尚未登入";
+        const prog = (subj) => {
+          const p = s.progress?.[subj];
+          return p && p.total > 0 ? `${p.completed}/${p.total}` : "-";
+        };
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><span class="online-dot ${isOnlineToday ? 'online' : 'offline'}"></span></td>
+          <td>${s.displayName || "-"}</td>
+          <td>${s.character ? s.character.avatar + " " + s.character.name : '<span class="badge">尚未創角</span>'}</td>
+          <td>${s.level || 1}</td>
+          <td>${prog("geography")}</td>
+          <td>${prog("history")}</td>
+          <td>${prog("civics")}</td>
+          <td>${lastLoginStr}</td>
+        `;
+        tbody.appendChild(row);
+      });
+  }
+
+  window.postAnnouncement = async function() {
+    const text = document.getElementById("announcement-input").value.trim();
+    const statusEl = document.getElementById("anno-status");
+    if (!text) { statusEl.textContent = "請輸入公告內容"; return; }
+    await setDoc(doc(db, "announcements", "current"), {
+      text: text,
+      updatedAt: serverTimestamp()
+    });
+    statusEl.textContent = "已發佈！學生下次進主選單就會看到。";
+    document.getElementById("announcement-input").value = "";
+  };
+</script>
+</body>
+</html>
